@@ -19,7 +19,7 @@ library(RColorBrewer)
 library(scales)
 ```
 
-```{r data, echo=FALSE, message=FALSE, warning=FALSE}
+```{r data, echo=TRUE, message=TRUE, warning=FALSE}
 
 # Load COVID-19 case data from Michigan state site
 download.file("https://www.michigan.gov/documents/coronavirus/Cases_and_Deaths_by_County_and_by_Date_of_Symptom_Onset_or_by_Date_of_Death2021-12-29_744483_7.xlsx", destfile="./rawData/Cases_by_County_and_Date.xlsx")
@@ -94,7 +94,7 @@ write_csv(michiganProbableData, "./processedData/michiganProbableData.csv")
 
 # Add confirmed and probable cases to get total cases
 michiganTotalData <- tibble(County = michiganConfirmedData$County, Date = michiganConfirmedData$Date, Status = "Total", Cases = michiganConfirmedData$Cases + michiganProbableData$Cases, Deaths = michiganConfirmedData$Deaths + michiganProbableData$Deaths, Cases.Cumulative = michiganConfirmedData$Cases.Cumulative + michiganProbableData$Cases.Cumulative, Deaths.Cumulative = michiganConfirmedData$Deaths.Cumulative + michiganProbableData$Deaths.Cumulative, Updated = michiganConfirmedData$Updated, Region = michiganConfirmedData$region, County.FIPS.Character = michiganConfirmedData$county.fips.character, State.Name = michiganConfirmedData$state.name, State.FIPS.Character = michiganConfirmedData$state.fips.character, State.Abb = michiganConfirmedData$state.abb, pop2018 = michiganConfirmedData$pop2018, GrowthRate = michiganConfirmedData$GrowthRate, Density = michiganConfirmedData$Density)
-metroCounty <- c("Ypsilanti", "Ann Arbor", "Romulus")
+metroCounty <- c("", "Ann Arbor", "Romulus")
 michiganTotalData$Detroit <- ifelse(michiganTotalData$County %in% metroCounty, "Yes", "No")
 
 write_csv(michiganTotalData, "./processedData/michiganTotalData.csv")
@@ -170,7 +170,7 @@ GIS information was left-joined onto the total data. The census data was also le
 Describe and explain the distribution below:
 Below there are two images. The first is the number of cases. As you can see the number of cases are mostly staying in one place. We know that all variants of Covid-19 spread easily and fast.
 
-```{r state_map1, echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=12, fig.cap="**Figure 1:** Add a legend here"}
+```{r state_map1, echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=12, fig.cap="**Figure 1:** CASES"}
 mapDataA <- michiganTotalData %>% 
   group_by(Region) %>% 
   rename(region = Region) %>% 
@@ -185,39 +185,59 @@ mapDataB <- michiganTotalData %>%
   summarize(value = max(Deaths.Cumulative))
 mapDataB <- unique(mapDataB)
 
-mapB <- county_choropleth(mapDataB, state_zoom = "michigan", num_colors = 1) 
+mapB <- county_choropleth(mapDataB, state_zoom = "michigan", num_colors = 1)
+```
 
-ggarrange(mapA, mapB, labels = c("A", "B"), ncol = 1, nrow = 2, font.label = list(size = 28, color = "black", face = "bold", family = NULL))
+
+```{r state_map1, echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=12, fig.cap="**Figure 1:** CASES"}
+ggarrange(mapA, mapB, labels = c("CASES", "DEATHS"), ncol = 1, nrow = 2, font.label = list(size = 28, color = "Brown", face = "bold", family = NULL))
 ```
 ## State Overall Trends
 Using the county maps below as an example, create a figure showing cases for the entire state over time.
+```{`{r state_plot, fig.cap="**Figure, fig.height=9, fig.width=7, message=FALSE, warning=FALSE}
+counties <- michiganTotalData %>% 
+  filter(County == "huron" | County == "lake" | County == "jackson")
+ggplot(michiganTotalData, aes(x=Cases, y=Date, color="pink", fill=County)) +
+ 
+
+  scale_x_datetime(breaks = date_breaks("months"),labels = date_format("%b")) +
+  geom_bar(stat = "identity") +
+  geom_ma(ma_fun = EMA, n = 6, wilder = FALSE, linetype = 8, size = 10) +
+  geom_vline(xintercept = as.POSIXct(as.Date(c("2019-04-02", "2019-09-17", "2020-08-31", "2020-09-07"))), linetype=8) +
+  facet_grid(rows=vars(County), scales="free_y") +
+  theme_bw() +
+  theme(legend.position="none") +
+    theme(axis.text=element_text(size=17),
+        axis.title=element_text(size=18,face="bold"))
+
+```
 
 
 
 ## Comparing Counties
 Three counties that experienced different COVID incidences are Huron,Lake, and Jackson as you see I will compare them below.The vertical lines delimit the initial outbreak, alpha, delta, and omicron variants.
 
-```{r county_plot, echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=7, fig.cap="**Figure 2:** Add a legend here"}
+```{r state_plot, fig.cap="**Figure, fig.height=7, fig.width=10, message=FALSE, warning=FALSE}
 counties <- michiganTotalData %>% 
   filter(County == "huron" | County == "lake" | County == "jackson")
-ggplot(counties, aes(x=Date, y=Cases, color=County, fill=County)) +
+ggplot(michiganTotalData, aes(x=Cases, y=Date, color="pink", fill=County)) +
   scale_color_manual(values=c('lake'="firebrick", 'huron'="dodgerblue", 'jackson'="steelblue")) +
   scale_fill_manual(legend, values=c('lake'="firebrick", 'huron'="dodgerblue", 'jackson'="steelblue")) +
   scale_x_datetime(breaks = date_breaks("months"),labels = date_format("%b")) +
   geom_bar(stat = "identity") +
-  geom_ma(ma_fun = EMA, n = 7, wilder = TRUE, linetype = 1, size = 2) +
-  geom_vline(xintercept = as.POSIXct(as.Date(c("2020-07-04", "2020-08-17", "2020-08-31", "2020-09-07"))), linetype=4) +
+  geom_ma(ma_fun = EMA, n = 2, wilder = FALSE, linetype = 7, size = 8) +
+  geom_vline(xintercept = as.POSIXct(as.Date(c("2019-04-02", "2019-09-17", "2020-08-31", "2020-09-07"))), linetype=8) +
   facet_grid(rows=vars(County), scales="free_y") +
   theme_bw() +
   theme(legend.position="none") +
-    theme(axis.text=element_text(size=14),
+    theme(axis.text=element_text(size=17),
         axis.title=element_text(size=18,face="bold"))
 ```
 
-```{r weekly_county_plot, echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=7, fig.cap="**Figure 6:** A comparison of the number of total cases in Huron, Lake, and Jackson counties by week. The bars indicate total daily cases and the lines are four-week moving averages." }
-counties <- weekly %>% 
+```{r weekly_county_plot, echo=FALSE, message=FALSE, warning=FALSE, fig.width=12, fig.height=7, fig.cap="**Figure 6:** A comparison of the number of total cases in Huron, Lake, and Jackson counties month. The bars indicate total daily cases and the lines are four-week moving averages." }
+counties <- monthly %>% 
   filter(County == "huron" | County == "lake" | County == "jackson")
-ggplot(counties, aes(x=Week, y=Weekly.Cases, color=County, fill=County)) +
+ggplot(counties, aes(x=month, y=monthly.Cases, color=County, fill=County)) +
     scale_color_manual(values=c('lake'="firebrick", 'huron'="dodgerblue", 'jackson'="steelblue")) +
   scale_fill_manual(legend, values=c('lake'="firebrick", 'huron'="dodgerblue", 'jackson'="steelblue")) +
   geom_bar(stat = "identity") +
@@ -230,8 +250,4 @@ ggplot(counties, aes(x=Week, y=Weekly.Cases, color=County, fill=County)) +
 ```
 
 ## Conclusions  
-In conclusion, during these four weeks we have learned a lot. The data above shows that Covid-19 is still a very deadly and dangerous. 
-
-
-
-
+In conclusion, during these four weeks we have learned a lot. The data above shows that Covid-19 is still a very deadly and dangerous. In the graph avobe you can see that each county had a number of different spikes, or when the coronavirus specifically hit certain counties. This is an important part in research because it also shows how the virus comes in waves. The conclusion of this research is, still wear your mask and wash your hands regularly. 
